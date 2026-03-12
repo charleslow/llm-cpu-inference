@@ -2,8 +2,18 @@
 set -e
 
 ITERATIONS=${1:-20}
-TRIAL_NUM=$(ls results/trial-*.jsonl 2>/dev/null | wc -l)
 TIMEOUT=$(python -c "from constants import TIMEOUT_SECONDS; print(TIMEOUT_SECONDS)")
+
+# Compute next trial number from summary.jsonl line count (matches run_backend.py logic)
+next_trial_num() {
+    if [ -f results/summary.jsonl ]; then
+        grep -c '.' results/summary.jsonl 2>/dev/null || echo 0
+    else
+        echo 0
+    fi
+}
+
+TRIAL_NUM=$(next_trial_num)
 
 # Archive backends/backend.py to backends/trial-{N}-{slug}.py
 archive_backend() {
@@ -51,6 +61,8 @@ Your job:
    - What this iteration will try and why (hypothesis)
    - Specific model name, framework, quantization, and any install steps
 
+IMPORTANT: Do NOT repeat a model+framework+quantization combo that already appears in summary.jsonl.
+
 Be concrete and specific. Name exact HuggingFace repos and quantization variants." \
         --allowedTools "Edit,Read,Bash,WebSearch" \
         2>&1 | tee results/experiment.log
@@ -86,9 +98,9 @@ The Backend class must conform to the InferenceBackend protocol in protocol.py."
         continue
     fi
 
-    # Full run with hard timeout
+    # Full run with hard timeout — pass explicit trial number
     echo "--- Full run ---"
-    timeout "$TIMEOUT" python run_backend.py 2>&1 | tee -a results/experiment.log
+    RUN_OUTPUT=$(timeout "$TIMEOUT" python run_backend.py --trial-num "$TRIAL_NUM" 2>&1 | tee -a results/experiment.log)
     EXIT_CODE=${PIPESTATUS[0]}
 
     if [ "$EXIT_CODE" -eq 124 ]; then
@@ -103,9 +115,17 @@ The Backend class must conform to the InferenceBackend protocol in protocol.py."
         continue
     fi
 
-    # Score
+    # Extract the completions file path from run output
+    COMP_FILE=$(echo "$RUN_OUTPUT" | grep '^COMPLETIONS_FILE=' | tail -1 | cut -d= -f2)
+
+    # Score — pass explicit file if we captured it
     echo "--- Scoring ---"
-    python score.py 2>&1 | tee -a results/experiment.log || echo "Scoring failed for trial $TRIAL_NUM"
+    if [ -n "$COMP_FILE" ]; then
+        python score.py --file "$COMP_FILE" 2>&1 | tee -a results/experiment.log || echo "Scoring failed for trial $TRIAL_NUM"
+    else
+        echo "WARNING: Could not capture completions file path, falling back to latest"
+        python score.py 2>&1 | tee -a results/experiment.log || echo "Scoring failed for trial $TRIAL_NUM"
+    fi
 
     # Archive backend for history
     archive_backend $TRIAL_NUM

@@ -22,6 +22,7 @@ from protocol import InferenceBackend
 PROMPTS_FILE = Path("data/prompts.jsonl")
 COMPLETIONS_DIR = Path("completions")
 RESULTS_DIR = Path("results")
+SUMMARY_FILE = RESULTS_DIR / "summary.jsonl"
 
 
 def _slugify(name: str) -> str:
@@ -56,9 +57,17 @@ def _get_trial_name() -> str:
 
 
 def _next_trial_number() -> int:
+    """Determine next trial number from summary.jsonl line count.
+
+    Each completed trial (ok, crash, timeout) appends exactly one line.
+    This is more reliable than counting files or parsing filenames.
+    """
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    existing = list(RESULTS_DIR.glob("trial-*.jsonl"))
-    return len(existing) + 1
+    if SUMMARY_FILE.exists():
+        with open(SUMMARY_FILE) as f:
+            n = sum(1 for line in f if line.strip())
+        return n + 1
+    return 1
 
 
 def _load_prompts() -> list[dict]:
@@ -72,11 +81,13 @@ def _load_prompts() -> list[dict]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run inference backend")
     parser.add_argument("--dry-run", action="store_true", help="Run only a few prompts for validation")
+    parser.add_argument("--trial-num", type=int, default=None,
+                        help="Explicit trial number (overrides auto-detection)")
     args = parser.parse_args()
 
     prompts = _load_prompts()
     trial_name = _get_trial_name()
-    trial_num = _next_trial_number()
+    trial_num = args.trial_num if args.trial_num is not None else _next_trial_number()
     run_id = f"trial-{trial_num}-{_slugify(trial_name)}"
 
     if args.dry_run:
@@ -127,6 +138,8 @@ def main() -> None:
         print("Dry run passed.")
     else:
         print(f"Completions written to {output_path}")
+        # Machine-readable line for harness to capture the output path
+        print(f"COMPLETIONS_FILE={output_path}")
 
 
 if __name__ == "__main__":

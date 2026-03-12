@@ -1,9 +1,10 @@
-"""Score the latest completions and append results to summary.jsonl.
+"""Score completions and append results to summary.jsonl.
 
 CLI:
-    python score.py                  # score latest completions (status=ok)
-    python score.py --status crash   # log a crash (no scoring, 0 accuracy)
-    python score.py --status timeout # log a timeout (no scoring, 0 accuracy)
+    python score.py --file completions/trial-5-foo.jsonl   # score a specific file
+    python score.py                                        # score latest (by mtime)
+    python score.py --status crash                         # log a crash (0 accuracy)
+    python score.py --status timeout                       # log a timeout (0 accuracy)
 """
 
 from __future__ import annotations
@@ -110,9 +111,11 @@ def score_entry(entry: dict) -> dict:
 
 
 def _find_latest_completion() -> Path | None:
-    """Find the most recently created completion file."""
-    files = sorted(COMPLETIONS_DIR.glob("trial-*.jsonl"))
-    return files[-1] if files else None
+    """Find the most recently created completion file (by modification time)."""
+    files = list(COMPLETIONS_DIR.glob("trial-*.jsonl"))
+    if not files:
+        return None
+    return max(files, key=lambda p: p.stat().st_mtime)
 
 
 def _parse_run_id(path: Path) -> tuple[str, int]:
@@ -138,15 +141,16 @@ def _read_backend_metadata() -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--status", default="ok", choices=["ok", "crash", "timeout"])
+    parser.add_argument("--file", type=Path, default=None,
+                        help="Explicit completion file to score (avoids guessing latest)")
     args = parser.parse_args()
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    latest = _find_latest_completion()
-
     # For crash/timeout, write a summary line with 0 accuracy and exit
     if args.status in ("crash", "timeout"):
         meta = _read_backend_metadata()
+        latest = _find_latest_completion()
         if latest:
             run_id, _ = _parse_run_id(latest)
         else:
@@ -168,10 +172,17 @@ def main() -> None:
         print(f"Logged {args.status}: {run_id}")
         return
 
-    # Normal scoring
-    if not latest:
-        print("ERROR: No completion files found in completions/", file=sys.stderr)
-        sys.exit(1)
+    # Normal scoring — use explicit file if given, else find latest by mtime
+    if args.file:
+        latest = args.file
+        if not latest.exists():
+            print(f"ERROR: Specified file {latest} does not exist", file=sys.stderr)
+            sys.exit(1)
+    else:
+        latest = _find_latest_completion()
+        if not latest:
+            print("ERROR: No completion files found in completions/", file=sys.stderr)
+            sys.exit(1)
 
     run_id, _ = _parse_run_id(latest)
     print(f"Scoring {latest.name}...")

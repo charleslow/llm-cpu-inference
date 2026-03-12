@@ -22,7 +22,7 @@ You modify exactly one file: `backends/backend.py`. This file defines a `Backend
 
 - `protocol.py` — the `InferenceBackend` contract. Your `Backend` class must implement `setup()`, `generate()`, and `teardown()`.
 - `constants.py` — `MAX_TOKENS=256`, `TEMPERATURE=0.0` (greedy), `TIMEOUT_SECONDS=1200`.
-- `setup.py`, `run_backend.py`, `score.py` — the harness is fixed.
+- `setup.py`, `run_backend.py`, `score.py`, `run.sh` — the harness is fixed.
 - `data/prompts.jsonl` — the evaluation prompts are fixed after `setup.py` runs.
 
 ## The loop

@@ -1,0 +1,33 @@
+# Data
+data/
+
+# Completions
+completions/
+
+# Results (keep structure, ignore generated files)
+results/experiment.log
+results/summary.jsonl
+results/trial-*.jsonl
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

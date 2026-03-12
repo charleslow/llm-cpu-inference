@@ -126,10 +126,10 @@ def _parse_run_id(path: Path) -> tuple[str, int]:
     return run_id, trial_num
 
 
-def _read_backend_metadata() -> dict:
-    """Try to extract model/framework/quant info from backend.py TRIAL_NAME."""
+def _read_backend_metadata(backend_path: str = "backends/backend.py") -> dict:
+    """Try to extract model/framework/quant info from a backend file's TRIAL_NAME."""
     try:
-        with open("backends/backend.py") as f:
+        with open(backend_path) as f:
             source = f.read()
         m = re.search(r'TRIAL_NAME\s*=\s*["\'](.+?)["\']', source)
         name = m.group(1) if m else "unknown"
@@ -143,13 +143,15 @@ def main() -> None:
     parser.add_argument("--status", default="ok", choices=["ok", "crash", "timeout"])
     parser.add_argument("--file", type=Path, default=None,
                         help="Explicit completion file to score (avoids guessing latest)")
+    parser.add_argument("--backend", type=str, default="backends/backend.py",
+                        help="Path to the backend file (for metadata extraction)")
     args = parser.parse_args()
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
     # For crash/timeout, write a summary line with 0 accuracy and exit
     if args.status in ("crash", "timeout"):
-        meta = _read_backend_metadata()
+        meta = _read_backend_metadata(args.backend)
         latest = _find_latest_completion()
         if latest:
             run_id, _ = _parse_run_id(latest)
@@ -227,7 +229,7 @@ def main() -> None:
     print(f"\nAvg latency: {avg_latency:.1f}ms | P90: {p90_latency:.1f}ms | Total: {total_time:.1f}s")
 
     # Append summary
-    meta = _read_backend_metadata()
+    meta = _read_backend_metadata(args.backend)
     summary = {
         "run_id": run_id,
         "model": "",

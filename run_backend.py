@@ -29,16 +29,16 @@ def _slugify(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
 
-def _load_backend() -> InferenceBackend:
-    spec = importlib.util.spec_from_file_location("backend", "backends/backend.py")
+def _load_backend(backend_path: str) -> InferenceBackend:
+    spec = importlib.util.spec_from_file_location("backend", backend_path)
     if spec is None or spec.loader is None:
-        print("ERROR: Cannot load backends/backend.py", file=sys.stderr)
+        print(f"ERROR: Cannot load {backend_path}", file=sys.stderr)
         sys.exit(1)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
 
     if not hasattr(mod, "Backend"):
-        print("ERROR: backends/backend.py must define a Backend class", file=sys.stderr)
+        print(f"ERROR: {backend_path} must define a Backend class", file=sys.stderr)
         sys.exit(1)
 
     backend = mod.Backend()
@@ -49,8 +49,8 @@ def _load_backend() -> InferenceBackend:
     return backend
 
 
-def _get_trial_name() -> str:
-    spec = importlib.util.spec_from_file_location("backend", "backends/backend.py")
+def _get_trial_name(backend_path: str) -> str:
+    spec = importlib.util.spec_from_file_location("backend", backend_path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return getattr(mod, "TRIAL_NAME", "unnamed")
@@ -83,10 +83,12 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true", help="Run only a few prompts for validation")
     parser.add_argument("--trial-num", type=int, default=None,
                         help="Explicit trial number (overrides auto-detection)")
+    parser.add_argument("--backend", type=str, default="backends/backend.py",
+                        help="Path to the backend file to load")
     args = parser.parse_args()
 
     prompts = _load_prompts()
-    trial_name = _get_trial_name()
+    trial_name = _get_trial_name(args.backend)
     trial_num = args.trial_num if args.trial_num is not None else _next_trial_number()
     run_id = f"trial-{trial_num}-{_slugify(trial_name)}"
 
@@ -97,7 +99,7 @@ def main() -> None:
         print(f"=== FULL RUN: {run_id} ({len(prompts)} prompts) ===")
 
     # Load and setup backend
-    backend = _load_backend()
+    backend = _load_backend(args.backend)
     print(f"Setting up backend: {trial_name}")
     backend.setup()
 

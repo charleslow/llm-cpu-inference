@@ -147,11 +147,10 @@ def main() -> None:
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    latest = _find_latest_completion()
-
     # For crash/timeout, write a summary line with 0 accuracy and exit
     if args.status in ("crash", "timeout"):
         meta = _read_backend_metadata()
+        latest = _find_latest_completion()
         if latest:
             run_id, _ = _parse_run_id(latest)
         else:
@@ -179,9 +178,11 @@ def main() -> None:
         if not latest.exists():
             print(f"ERROR: Specified file {latest} does not exist", file=sys.stderr)
             sys.exit(1)
-    elif not latest:
-        print("ERROR: No completion files found in completions/", file=sys.stderr)
-        sys.exit(1)
+    else:
+        latest = _find_latest_completion()
+        if not latest:
+            print("ERROR: No completion files found in completions/", file=sys.stderr)
+            sys.exit(1)
 
     run_id, _ = _parse_run_id(latest)
     print(f"Scoring {latest.name}...")

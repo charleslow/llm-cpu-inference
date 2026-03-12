@@ -7,7 +7,7 @@ TIMEOUT=$(python -c "from constants import TIMEOUT_SECONDS; print(TIMEOUT_SECOND
 # Compute next trial number from summary.jsonl line count (matches run_backend.py logic)
 next_trial_num() {
     if [ -f results/summary.jsonl ]; then
-        grep -c '.' results/summary.jsonl 2>/dev/null || echo 0
+        grep -c '[^[:space:]]' results/summary.jsonl 2>/dev/null || echo 0
     else
         echo 0
     fi

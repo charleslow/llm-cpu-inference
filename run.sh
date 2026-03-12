@@ -3,6 +3,7 @@ set -e
 
 ITERATIONS=${1:-20}
 TRIAL_NUM=$(ls results/trial-*.jsonl 2>/dev/null | wc -l)
+TIMEOUT=$(python -c "from constants import TIMEOUT_SECONDS; print(TIMEOUT_SECONDS)")
 
 # Archive backends/backend.py to backends/trial-{N}-{slug}.py
 archive_backend() {
@@ -87,7 +88,7 @@ The Backend class must conform to the InferenceBackend protocol in protocol.py."
 
     # Full run with hard timeout
     echo "--- Full run ---"
-    timeout 1200 python run_backend.py 2>&1 | tee -a results/experiment.log
+    timeout "$TIMEOUT" python run_backend.py 2>&1 | tee -a results/experiment.log
     EXIT_CODE=${PIPESTATUS[0]}
 
     if [ "$EXIT_CODE" -eq 124 ]; then

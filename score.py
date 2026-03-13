@@ -26,24 +26,44 @@ SUMMARY_FILE = RESULTS_DIR / "summary.jsonl"
 # ---------------------------------------------------------------------------
 
 def extract_choice(raw_output: str) -> str:
-    """Extract a letter answer (A-E) from model output."""
+    """Extract a letter answer (A-E) from model output.
+
+    Priority: answers on the first line take precedence over later text,
+    which may be hallucinated follow-up content from the model.
+    """
     text = raw_output.strip()
 
     # 1. Entire output is a single letter
     if len(text) == 1 and text.upper() in "ABCDE":
         return text.upper()
 
-    # 2. Pattern: "answer is A" / "correct: B"
+    first_line = text.split("\n")[0].strip()
+
+    # 2. First line is just a letter (model answered immediately, e.g. "D")
+    if len(first_line) == 1 and first_line.upper() in "ABCDE":
+        return first_line.upper()
+
+    # 3. First line has letter with punctuation, e.g. "D." or "D)"
+    m = re.match(r"([A-E])\s*[.):\-,]", first_line, re.IGNORECASE)
+    if m:
+        return m.group(1).upper()
+
+    # 4. First line has "answer is A" / "correct: B"
+    m = re.search(r"(?:answer|correct)\s*(?:is|:)\s*([A-E])", first_line, re.IGNORECASE)
+    if m:
+        return m.group(1).upper()
+
+    # 5. Fallback: search whole text for "answer is A" / "correct: B"
     m = re.search(r"(?:answer|correct)\s*(?:is|:)\s*([A-E])", text, re.IGNORECASE)
     if m:
         return m.group(1).upper()
 
-    # 3. First standalone letter A-E
+    # 6. First standalone letter A-E anywhere in text
     m = re.search(r"\b([A-E])\b", text)
     if m:
         return m.group(1).upper()
 
-    # 4. First character uppercased
+    # 7. First character uppercased (last resort)
     if text:
         return text[0].upper()
 

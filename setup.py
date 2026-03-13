@@ -53,7 +53,7 @@ def _format_mmlu(example: dict) -> dict:
     question = example["question"]
     choices = example["choices"]
     options = "\n".join(f"{LETTERS[i]}. {c}" for i, c in enumerate(choices))
-    prompt = f"{question}\n\n{options}\n\nAnswer:"
+    prompt = f"{question}\n\n{options}\n\nAnswer: "
     gold = LETTERS[example["answer"]]
     return {"prompt": prompt, "gold": gold, "task": "mmlu", "answer_type": "choice"}
 
@@ -64,7 +64,7 @@ def _format_arc(example: dict) -> dict:
     labels = choices["label"]
     texts = choices["text"]
     options = "\n".join(f"{l}. {t}" for l, t in zip(labels, texts))
-    prompt = f"{question}\n\n{options}\n\nAnswer:"
+    prompt = f"{question}\n\n{options}\n\nAnswer: "
     gold = example["answerKey"]
     return {"prompt": prompt, "gold": gold, "task": "arc_challenge", "answer_type": "choice"}
 
@@ -73,14 +73,14 @@ def _format_hellaswag(example: dict) -> dict:
     ctx = example["ctx"]
     endings = example["endings"]
     options = "\n".join(f"{LETTERS[i]}. {e}" for i, e in enumerate(endings))
-    prompt = f"{ctx}\n\n{options}\n\nAnswer:"
+    prompt = f"{ctx}\n\n{options}\n\nAnswer: "
     gold = LETTERS[int(example["label"])]
     return {"prompt": prompt, "gold": gold, "task": "hellaswag", "answer_type": "choice"}
 
 
 def _format_gsm8k(example: dict) -> dict:
     question = example["question"]
-    prompt = f"{question}\n\nAnswer:"
+    prompt = f"{question}\n\nAnswer: "
     # Gold answer is after ####
     answer_text = example["answer"]
     gold = answer_text.split("####")[-1].strip()
@@ -91,7 +91,7 @@ def _format_winogrande(example: dict) -> dict:
     sentence = example["sentence"]
     opt1 = example["option1"]
     opt2 = example["option2"]
-    prompt = f"{sentence}\n\nA. {opt1}\nB. {opt2}\n\nAnswer:"
+    prompt = f"{sentence}\n\nA. {opt1}\nB. {opt2}\n\nAnswer: "
     gold = "A" if example["answer"] == "1" else "B"
     return {"prompt": prompt, "gold": gold, "task": "winogrande", "answer_type": "choice"}
 
@@ -101,7 +101,7 @@ def _format_truthfulqa(example: dict) -> dict:
     choices = example["mc1_targets"]["choices"]
     labels = example["mc1_targets"]["labels"]
     options = "\n".join(f"{LETTERS[i]}. {c}" for i, c in enumerate(choices))
-    prompt = f"{question}\n\n{options}\n\nAnswer:"
+    prompt = f"{question}\n\n{options}\n\nAnswer: "
     gold_idx = labels.index(1)
     gold = LETTERS[gold_idx]
     return {"prompt": prompt, "gold": gold, "task": "truthfulqa", "answer_type": "choice"}
